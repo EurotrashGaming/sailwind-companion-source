@@ -37,7 +37,7 @@ const scaleCanvasPosition = (canvas, position) => {
   ];
 };
 
-function Map({ drawTool, map, items, setItems }) {
+function Map({ drawTool, map, items, setItems, settings }) {
   const classes = useStyles();
 
   const canvasRef = useRef(null);
@@ -49,7 +49,7 @@ function Map({ drawTool, map, items, setItems }) {
   const [tagText, setTagText] = useState('');
 
   const update = (startPoint, mousePosition, items) => {
-    draw(context, map, startPoint, mousePosition, items, drawTool);
+    draw(context, map, startPoint, mousePosition, items, drawTool, settings);
   };
 
   useEffect(() => {
@@ -74,7 +74,7 @@ function Map({ drawTool, map, items, setItems }) {
 
     const newStartPoint = startPoint ? null : mousePosition;
     const newItems = startPoint ?
-      appendItem(items, createItem(map, drawTool, startPoint, mousePosition)) : items;
+      appendItem(items, createItem(map, drawTool, startPoint, mousePosition, settings)) : items;
     setStartPoint(newStartPoint);
     if (newItems !== items) {
       setItems(newItems);

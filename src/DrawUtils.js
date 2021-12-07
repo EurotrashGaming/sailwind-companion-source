@@ -69,18 +69,18 @@ const circleStyles = {
     },
 };
 
-export const createItem = (map, type, start, end) => {
+export const createItem = (map, type, start, end, settings) => {
     if (type === 'line') {
-        return createLine(map, start, end);
+        return createLine(map, start, end, settings);
     } else if (type === 'circle') {
-        return createCircle(map, start, end);
+        return createCircle(map, start, end, settings);
     }
 }
 
-const createLine = (map, start, end) => {
+const createLine = (map, start, end, settings) => {
     return {
         id: getNextId(),
-        description: getLineDescription(map, start, end),
+        description: getLineDescription(map, start, end, settings),
         type: 'line',
         start,
         end,
@@ -88,10 +88,10 @@ const createLine = (map, start, end) => {
     };
 };
 
-const createCircle = (map, start, end) => {
+const createCircle = (map, start, end, settings) => {
     return {
         id: getNextId(),
-        description: getCircleDescription(map, start, end),
+        description: getCircleDescription(map, start, end, settings),
         type: 'circle',
         start,
         end,
@@ -121,7 +121,7 @@ const drawCursorGuides = (ctx, mousePosition) => {
     ctx.stroke();
 };
 
-const getLineData = (start, end) => {
+const getLineData = (start, end, settings) => {
     const dx = end[0] - start[0];
     const dy = end[1] - start[1];
     const length = Math.round(Math.sqrt(Math.pow(end[0] - start[0], 2) + Math.pow(end[1] - start[1], 2)));
@@ -136,14 +136,16 @@ const getLineData = (start, end) => {
             angle = (end[0] > start[0]) ? 90 : 270;
         } else if (start[0] < end[0] && start[1] < end[1]) {
             angle = 180 - angle;
-        } else if (start[0] > end[0] && start[1] < end[1]) {
+        } else if (start[0] >= end[0] && start[1] < end[1]) {
             angle = 270 - (angle - 270)
         }
 
+        angle = angle % 360;
+
         const reciprocalAngle = (angle + 180) % 360;
 
-        angleText = angle + '° (' + categorizeAngle(angle, directionMode.wind16) + ')';
-        reciprocalAngleText = reciprocalAngle + '° (' + categorizeAngle(reciprocalAngle, directionMode.wind16) + ')';
+        angleText = angle + '° (' + categorizeAngle(angle, settings.compass) + ')';
+        reciprocalAngleText = reciprocalAngle + '° (' + categorizeAngle(reciprocalAngle, settings.compass) + ')';
     }
 
     return {
@@ -182,14 +184,14 @@ const categorizeAngle = (angle, mode) => {
     return '';
 };
 
-const getLineDescription = (map, start, end) => {
-    const { length, angleText } = getLineData(start, end);
+const getLineDescription = (map, start, end, settings) => {
+    const { length, angleText } = getLineData(start, end, settings);
 
     return `${Math.round(length * map.scale)} nm line at ${angleText}`;
 };
 
-const getCircleDescription = (map, start, end) => {
-    const { length } = getLineData(start, end);
+const getCircleDescription = (map, start, end, settings) => {
+    const { length } = getLineData(start, end, settings);
 
     return `${Math.round(length * map.scale)} nm circle`;
 };
@@ -200,8 +202,8 @@ const setLineStyle = (ctx, style) => {
     ctx.setLineDash(style.dash);
 }
 
-const drawLineSegment = (ctx, map, start, end, style) => {
-    const { length, mid, angleText, reciprocalAngleText } = getLineData(start, end);
+const drawLineSegment = (ctx, map, start, end, style, settings) => {
+    const { length, mid, angleText, reciprocalAngleText } = getLineData(start, end, settings);
 
     if (style.line1) {
         setLineStyle(ctx, style.line1)
@@ -221,7 +223,7 @@ const drawLineSegment = (ctx, map, start, end, style) => {
 
     if (length > 40 && style.showDirection) {
         drawText(ctx, [start[0] + 20, start[1] + 20], reciprocalAngleText);
-        drawText(ctx, [end[0] + 30, end[1] + 30], angleText);
+        drawText(ctx, [end[0] + 40, end[1] + 40], angleText);
     }
 
     if (style.showLength) {
@@ -229,8 +231,8 @@ const drawLineSegment = (ctx, map, start, end, style) => {
     }
 };
 
-const drawCircle = (ctx, map, start, end, style) => {
-    const { length } = getLineData(start, end);
+const drawCircle = (ctx, map, start, end, style, settings) => {
+    const { length } = getLineData(start, end, settings);
 
     setLineStyle(ctx, style.line1)
     ctx.beginPath();
@@ -242,30 +244,30 @@ const drawCircle = (ctx, map, start, end, style) => {
     ctx.arc(start[0], start[1], length, 0, 2 * Math.PI);
     ctx.stroke();
 
-    drawLineSegment(ctx, map, start, end, style);
+    drawLineSegment(ctx, map, start, end, style, settings);
 };
 
 const drawTag = (ctx, location, text) => {
     drawText(ctx, [location[0] + 20, location[1] + 20], text);
 };
 
-const drawItems = (ctx, map, items) => {
+const drawItems = (ctx, map, items, settings) => {
     if (!items) {
         return;
     }
 
     for (let item of items) {
         if (item.type === 'line') {
-            drawLineSegment(ctx, map, item.start, item.end, item.style);
+            drawLineSegment(ctx, map, item.start, item.end, item.style, settings);
         } else if (item.type === 'circle') {
-            drawCircle(ctx, map, item.start, item.end, item.style);
+            drawCircle(ctx, map, item.start, item.end, item.style, settings);
         } else if (item.type === 'tag') {
             drawTag(ctx, item.location, item.text);
         }
     }
 };
 
-export const draw = (ctx, map, startPoint, mousePosition, items, drawTool) => {
+export const draw = (ctx, map, startPoint, mousePosition, items, drawTool, settings) => {
     if (!ctx) {
         return;
     }
@@ -280,11 +282,11 @@ export const draw = (ctx, map, startPoint, mousePosition, items, drawTool) => {
 
     if (startPoint && mousePosition) {
         if (drawTool === 'line') {
-            drawLineSegment(ctx, map, startPoint, mousePosition, lineStyles.inProgress);
+            drawLineSegment(ctx, map, startPoint, mousePosition, lineStyles.inProgress, settings);
         } else if (drawTool === 'circle') {
-            drawCircle(ctx, map, startPoint, mousePosition, circleStyles.inProgress);
+            drawCircle(ctx, map, startPoint, mousePosition, circleStyles.inProgress, settings);
         }
     }
 
-    drawItems(ctx, map, items);
+    drawItems(ctx, map, items, settings);
 };
